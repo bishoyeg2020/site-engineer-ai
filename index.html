@@ -55,16 +55,22 @@
     <script>
         let selectedFile = null; // متغير يحفظ الصورة سواء جات من الكاميرا أو الاستوديو
 
-        // دالة عرض الصورة
-        function previewImage(event) {
+       function previewImage(event) {
             selectedFile = event.target.files[0];
             if (!selectedFile) return;
+
+            // إظهار رسالة تحميل صغيرة لحد ما الصورة تظهر
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loading').innerText = '⏳ جاري عرض الصورة...';
 
             const reader = new FileReader();
             reader.onload = function(){
                 const imgElement = document.getElementById('image-preview');
                 imgElement.src = reader.result;
                 imgElement.style.display = 'block';
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('loading').innerText = '⏳ جاري المعالجة واستخراج الأكواد... (قد يستغرق 30 ثانية)';
                 
                 document.getElementById('analyzeBtn').style.display = 'block';
                 document.getElementById('result-box').style.display = 'none';
