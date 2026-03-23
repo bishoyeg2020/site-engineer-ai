@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مساعد المهندس الذكي</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; text-align: center; }
+        .header { background-color: #0056b3; color: white; padding: 20px; font-size: 24px; font-weight: bold; }
+        .container { padding: 20px; max-width: 500px; margin: auto; }
+        .upload-btn-wrapper { position: relative; overflow: hidden; display: inline-block; margin-top: 20px; width: 100%;}
+        .btn { border: 2px solid #0056b3; color: white; background-color: #0056b3; padding: 15px; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; width: 100%; margin-bottom: 10px;}
+        .btn-history { background-color: #28a745; border-color: #28a745; }
+        .upload-btn-wrapper input[type=file] { font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; }
+        #loading { display: none; margin-top: 20px; font-size: 18px; color: #d9534f; font-weight: bold; }
+        #result-box { margin-top: 30px; padding: 20px; background-color: white; border-radius: 8px; box-shadow: 0px 0px 10px rgba(0,0,0,0.1); text-align: right; display: none; white-space: pre-wrap; line-height: 1.6;}
+        .history-item { background-color: #e9ecef; padding: 15px; margin-top: 15px; border-radius: 8px; text-align: right; border-right: 5px solid #0056b3;}
+        .history-date { font-weight: bold; color: #555; margin-bottom: 10px; font-size: 14px;}
+    </style>
+</head>
+<body>
+
+    <div class="header">مساعد المهندس الذكي ⚙️</div>
+
+    <div class="container">
+        <p>قم بتصوير لوحة المعدة أو كود العطل لتحليله فوراً</p>
+
+        <div class="upload-btn-wrapper">
+            <button class="btn">📷 التقط أو اختر صورة</button>
+            <input type="file" id="imageInput" accept="image/*" capture="environment" onchange="uploadImage()" />
+        </div>
+        
+        <button class="btn btn-history" onclick="loadHistory()">📂 عرض سجل الأعطال</button>
+
+        <div id="loading">⏳ جاري المعالجة...</div>
+        
+        <div id="result-box"></div>
+    </div>
+
+    <script>
+        // دالة رفع الصورة وتحليلها
+        async function uploadImage() {
+            const fileInput = document.getElementById('imageInput');
+            const resultBox = document.getElementById('result-box');
+            const loading = document.getElementById('loading');
+
+            if (fileInput.files.length === 0) return;
+
+            loading.style.display = 'block';
+            resultBox.style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const response = await fetch('/analyze-error/', { method: 'POST', body: formData });
+                const data = await response.json();
+
+                loading.style.display = 'none';
+                if (data.status === 'success') {
+                    resultBox.innerHTML = "<h3 style='color:#0056b3; margin-top:0;'>نتيجة الفحص الحالي:</h3>" + data.report;
+                    resultBox.style.display = 'block';
+                } else {
+                    alert("حدث خطأ: " + data.message);
+                }
+            } catch (error) {
+                loading.style.display = 'none';
+                alert("تأكد من تشغيل السيرفر.");
+            }
+        }
+
+        // دالة استدعاء سجل الأعطال من قاعدة البيانات
+        async function loadHistory() {
+            const resultBox = document.getElementById('result-box');
+            const loading = document.getElementById('loading');
+
+            loading.style.display = 'block';
+            resultBox.style.display = 'none';
+
+            try {
+                const response = await fetch('/history/');
+                const data = await response.json();
+
+                loading.style.display = 'none';
+                if (data.status === 'success') {
+                    if (data.history.length === 0) {
+                        resultBox.innerHTML = "<strong>سجل الأعطال فارغ.</strong>";
+                    } else {
+                        let htmlContent = "<h3 style='color:#28a745; margin-top:0;'>الأعطال السابقة:</h3>";
+                        // لفة لعرض كل الأعطال القديمة
+                        data.history.forEach(item => {
+                            htmlContent += `
+                                <div class="history-item">
+                                    <div class="history-date">📅 أضيف في: ${item.date}</div>
+                                    <div>${item.report}</div>
+                                </div>
+                            `;
+                        });
+                        resultBox.innerHTML = htmlContent;
+                    }
+                    resultBox.style.display = 'block';
+                }
+            } catch (error) {
+                loading.style.display = 'none';
+                alert("فشل في تحميل السجل.");
+            }
+        }
+    </script>
+</body>
+</html>
