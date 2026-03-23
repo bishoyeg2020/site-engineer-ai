@@ -1,7 +1,7 @@
-import os
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+import os
 import google.generativeai as genai
 import PIL.Image
 import io
@@ -10,7 +10,7 @@ from datetime import datetime
 
 # 1. إعداد Gemini
 # استدعاء المفتاح بشكل آمن من إعدادات السيرفر
-api_key = os.environ.get("GEMINI_API_KEY")
+api_key = os.environ.get("GOOGLE_API_KEY")
 genai.configure(api_key=api_key)
 model = genai.GenerativeModel('gemini-2.5-flash')
 
