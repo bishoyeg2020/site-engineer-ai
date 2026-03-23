@@ -8,11 +8,19 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; text-align: center; }
         .header { background-color: #0056b3; color: white; padding: 20px; font-size: 24px; font-weight: bold; }
         .container { padding: 20px; max-width: 500px; margin: auto; }
-        .upload-btn-wrapper { position: relative; overflow: hidden; display: inline-block; margin-top: 20px; width: 100%;}
-        .btn { border: 2px solid #0056b3; color: white; background-color: #0056b3; padding: 15px; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; width: 100%; margin-bottom: 10px;}
-        .btn-history { background-color: #28a745; border-color: #28a745; }
-        .upload-btn-wrapper input[type=file] { font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; }
-        #loading { display: none; margin-top: 20px; font-size: 18px; color: #d9534f; font-weight: bold; }
+        .btn { border: none; color: white; padding: 15px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; margin-bottom: 10px; transition: 0.3s;}
+        
+        /* تنسيق الأزرار الجديدة */
+        .buttons-row { display: flex; gap: 10px; margin-bottom: 15px; }
+        .btn-camera { background-color: #17a2b8; flex: 1; }
+        .btn-gallery { background-color: #6c757d; flex: 1; }
+        
+        .btn-analyze { background-color: #0056b3; display: none; font-size: 18px;}
+        .btn-history { background-color: #28a745; font-size: 18px;}
+        input[type=file] { display: none; }
+        
+        #image-preview { max-width: 100%; height: auto; margin: 15px auto; border-radius: 8px; display: none; box-shadow: 0px 4px 8px rgba(0,0,0,0.1); border: 2px solid #0056b3;}
+        #loading { display: none; margin-top: 20px; font-size: 16px; color: #d9534f; font-weight: bold; }
         #result-box { margin-top: 30px; padding: 20px; background-color: white; border-radius: 8px; box-shadow: 0px 0px 10px rgba(0,0,0,0.1); text-align: right; display: none; white-space: pre-wrap; line-height: 1.6;}
         .history-item { background-color: #e9ecef; padding: 15px; margin-top: 15px; border-radius: 8px; text-align: right; border-right: 5px solid #0056b3;}
         .history-date { font-weight: bold; color: #555; margin-bottom: 10px; font-size: 14px;}
@@ -23,40 +31,69 @@
     <div class="header">مساعد المهندس الذكي ⚙️</div>
 
     <div class="container">
-        <p>قم بتصوير لوحة المعدة أو كود العطل لتحليله فوراً</p>
+        <p>اختر طريقة إدخال صورة العطل أو اللوحة:</p>
 
-        <div class="upload-btn-wrapper">
-            <button class="btn">📷 التقط أو اختر صورة</button>
-            <input type="file" id="imageInput" accept="image/*" capture="environment" onchange="uploadImage()" />
+        <div class="buttons-row">
+            <label for="cameraInput" class="btn btn-camera">📸 تصوير مباشر</label>
+            <input type="file" id="cameraInput" accept="image/*" capture="environment" onchange="previewImage(event)" />
+
+            <label for="galleryInput" class="btn btn-gallery">🖼️ رفع من الاستوديو</label>
+            <input type="file" id="galleryInput" accept="image/*" onchange="previewImage(event)" />
         </div>
+
+        <img id="image-preview" src="" alt="معاينة العطل" />
+
+        <button id="analyzeBtn" class="btn btn-analyze" onclick="uploadImage()">🚀 تحليل العطل الآن</button>
         
         <button class="btn btn-history" onclick="loadHistory()">📂 عرض سجل الأعطال</button>
 
-        <div id="loading">⏳ جاري المعالجة...</div>
+        <div id="loading">⏳ جاري المعالجة واستخراج الأكواد... (قد يستغرق 30 ثانية)</div>
         
         <div id="result-box"></div>
     </div>
 
     <script>
-        // دالة رفع الصورة وتحليلها
+        let selectedFile = null; // متغير يحفظ الصورة سواء جات من الكاميرا أو الاستوديو
+
+        // دالة عرض الصورة
+        function previewImage(event) {
+            selectedFile = event.target.files[0];
+            if (!selectedFile) return;
+
+            const reader = new FileReader();
+            reader.onload = function(){
+                const imgElement = document.getElementById('image-preview');
+                imgElement.src = reader.result;
+                imgElement.style.display = 'block';
+                
+                document.getElementById('analyzeBtn').style.display = 'block';
+                document.getElementById('result-box').style.display = 'none';
+            };
+            reader.readAsDataURL(selectedFile);
+        }
+
+        // دالة رفع الصورة للسيرفر
         async function uploadImage() {
-            const fileInput = document.getElementById('imageInput');
+            if (!selectedFile) return;
+
             const resultBox = document.getElementById('result-box');
             const loading = document.getElementById('loading');
-
-            if (fileInput.files.length === 0) return;
+            const analyzeBtn = document.getElementById('analyzeBtn');
 
             loading.style.display = 'block';
             resultBox.style.display = 'none';
+            analyzeBtn.style.display = 'none'; 
 
             const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
+            formData.append('file', selectedFile);
 
             try {
                 const response = await fetch('/analyze-error/', { method: 'POST', body: formData });
                 const data = await response.json();
 
                 loading.style.display = 'none';
+                analyzeBtn.style.display = 'block'; 
+
                 if (data.status === 'success') {
                     resultBox.innerHTML = "<h3 style='color:#0056b3; margin-top:0;'>نتيجة الفحص الحالي:</h3>" + data.report;
                     resultBox.style.display = 'block';
@@ -65,17 +102,22 @@
                 }
             } catch (error) {
                 loading.style.display = 'none';
-                alert("تأكد من تشغيل السيرفر.");
+                analyzeBtn.style.display = 'block';
+                alert("تأكد من استقرار الإنترنت، أو حاول مرة أخرى.");
             }
         }
 
-        // دالة استدعاء سجل الأعطال من قاعدة البيانات
+        // دالة استدعاء سجل الأعطال
         async function loadHistory() {
             const resultBox = document.getElementById('result-box');
             const loading = document.getElementById('loading');
+            const imgElement = document.getElementById('image-preview');
+            const analyzeBtn = document.getElementById('analyzeBtn');
 
             loading.style.display = 'block';
             resultBox.style.display = 'none';
+            imgElement.style.display = 'none';
+            analyzeBtn.style.display = 'none';
 
             try {
                 const response = await fetch('/history/');
@@ -87,24 +129,4 @@
                         resultBox.innerHTML = "<strong>سجل الأعطال فارغ.</strong>";
                     } else {
                         let htmlContent = "<h3 style='color:#28a745; margin-top:0;'>الأعطال السابقة:</h3>";
-                        // لفة لعرض كل الأعطال القديمة
-                        data.history.forEach(item => {
-                            htmlContent += `
-                                <div class="history-item">
-                                    <div class="history-date">📅 أضيف في: ${item.date}</div>
-                                    <div>${item.report}</div>
-                                </div>
-                            `;
-                        });
-                        resultBox.innerHTML = htmlContent;
-                    }
-                    resultBox.style.display = 'block';
-                }
-            } catch (error) {
-                loading.style.display = 'none';
-                alert("فشل في تحميل السجل.");
-            }
-        }
-    </script>
-</body>
-</html>
+                        data.history
