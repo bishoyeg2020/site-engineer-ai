@@ -10,14 +10,15 @@
         .container { padding: 20px; max-width: 500px; margin: auto; }
         .btn { border: none; color: white; padding: 15px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; margin-bottom: 10px; transition: 0.3s;}
         
-        /* تنسيق الأزرار الجديدة */
         .buttons-row { display: flex; gap: 10px; margin-bottom: 15px; }
         .btn-camera { background-color: #17a2b8; flex: 1; }
         .btn-gallery { background-color: #6c757d; flex: 1; }
         
         .btn-analyze { background-color: #0056b3; display: none; font-size: 18px;}
         .btn-history { background-color: #28a745; font-size: 18px;}
-        input[type=file] { position: absolute; opacity: 0; width: 1px; height: 1px; z-index: -1; }
+        
+        /* إخفاء مدخلات الملفات تماماً لأننا هنشغلها بالجافاسكريبت */
+        input[type=file] { display: none; }
         
         #image-preview { max-width: 100%; height: auto; margin: 15px auto; border-radius: 8px; display: none; box-shadow: 0px 4px 8px rgba(0,0,0,0.1); border: 2px solid #0056b3;}
         #loading { display: none; margin-top: 20px; font-size: 16px; color: #d9534f; font-weight: bold; }
@@ -34,12 +35,12 @@
         <p>اختر طريقة إدخال صورة العطل أو اللوحة:</p>
 
         <div class="buttons-row">
-            <label for="cameraInput" class="btn btn-camera">📸 تصوير مباشر</label>
-            <input type="file" id="cameraInput" accept="image/*" capture="environment" onchange="previewImage(event)" />
-
-            <label for="galleryInput" class="btn btn-gallery">🖼️ رفع من الاستوديو</label>
-            <input type="file" id="galleryInput" accept="image/*" onchange="previewImage(event)" />
+            <button class="btn btn-camera" onclick="document.getElementById('cameraInput').click()">📸 تصوير مباشر</button>
+            <button class="btn btn-gallery" onclick="document.getElementById('galleryInput').click()">🖼️ الاستوديو</button>
         </div>
+
+        <input type="file" id="cameraInput" accept="image/*" capture="environment" onchange="previewImage(event)" />
+        <input type="file" id="galleryInput" accept="image/*" onchange="previewImage(event)" />
 
         <img id="image-preview" src="" alt="معاينة العطل" />
 
@@ -47,46 +48,63 @@
         
         <button class="btn btn-history" onclick="loadHistory()">📂 عرض سجل الأعطال</button>
 
-        <div id="loading">⏳ جاري المعالجة واستخراج الأكواد... (قد يستغرق 30 ثانية)</div>
+        <div id="loading">⏳ جاري المعالجة...</div>
         
         <div id="result-box"></div>
     </div>
 
     <script>
-        let selectedFile = null; // متغير يحفظ الصورة سواء جات من الكاميرا أو الاستوديو
+        let selectedFile = null;
 
-       function previewImage(event) {
-            selectedFile = event.target.files[0];
-            if (!selectedFile) return;
+        function previewImage(event) {
+            try {
+                const file = event.target.files[0];
+                if (!file) return; // لو المستخدم فتح وقفل من غير ما يختار حاجة
 
-            // إظهار رسالة تحميل صغيرة لحد ما الصورة تظهر
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('loading').innerText = '⏳ جاري عرض الصورة...';
+                selectedFile = file;
 
-            const reader = new FileReader();
-            reader.onload = function(){
+                const loading = document.getElementById('loading');
                 const imgElement = document.getElementById('image-preview');
-                imgElement.src = reader.result;
-                imgElement.style.display = 'block';
+                const analyzeBtn = document.getElementById('analyzeBtn');
+                const resultBox = document.getElementById('result-box');
+
+                loading.style.display = 'block';
+                loading.innerText = '⏳ جاري تحميل الصورة للمعاينة...';
+                resultBox.style.display = 'none';
+                imgElement.style.display = 'none';
+
+                const reader = new FileReader();
+                reader.onload = function(e){
+                    imgElement.src = e.target.result;
+                    imgElement.style.display = 'block';
+                    loading.style.display = 'none';
+                    analyzeBtn.style.display = 'block';
+                };
                 
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('loading').innerText = '⏳ جاري المعالجة واستخراج الأكواد... (قد يستغرق 30 ثانية)';
-                
-                document.getElementById('analyzeBtn').style.display = 'block';
-                document.getElementById('result-box').style.display = 'none';
-            };
-            reader.readAsDataURL(selectedFile);
+                // في حالة إن الموبايل رفض يقرا الصورة
+                reader.onerror = function() {
+                    loading.style.display = 'none';
+                    alert("حصلت مشكلة في قراءة الصورة من موبايلك. يرجى المحاولة بصورة أخرى.");
+                };
+
+                reader.readAsDataURL(file);
+            } catch (error) {
+                alert("حدث خطأ غير متوقع: " + error.message);
+            }
         }
 
-        // دالة رفع الصورة للسيرفر
         async function uploadImage() {
-            if (!selectedFile) return;
+            if (!selectedFile) {
+                alert("يرجى اختيار صورة أولاً");
+                return;
+            }
 
             const resultBox = document.getElementById('result-box');
             const loading = document.getElementById('loading');
             const analyzeBtn = document.getElementById('analyzeBtn');
 
             loading.style.display = 'block';
+            loading.innerText = '⏳ جاري المعالجة واستخراج الأكواد... (قد يستغرق 30 ثانية)';
             resultBox.style.display = 'none';
             analyzeBtn.style.display = 'none'; 
 
@@ -104,16 +122,15 @@
                     resultBox.innerHTML = "<h3 style='color:#0056b3; margin-top:0;'>نتيجة الفحص الحالي:</h3>" + data.report;
                     resultBox.style.display = 'block';
                 } else {
-                    alert("حدث خطأ: " + data.message);
+                    alert("حدث خطأ في السيرفر: " + data.message);
                 }
             } catch (error) {
                 loading.style.display = 'none';
                 analyzeBtn.style.display = 'block';
-                alert("تأكد من استقرار الإنترنت، أو حاول مرة أخرى.");
+                alert("خطأ في الاتصال بالإنترنت أو السيرفر.");
             }
         }
 
-        // دالة استدعاء سجل الأعطال
         async function loadHistory() {
             const resultBox = document.getElementById('result-box');
             const loading = document.getElementById('loading');
@@ -121,6 +138,7 @@
             const analyzeBtn = document.getElementById('analyzeBtn');
 
             loading.style.display = 'block';
+            loading.innerText = '⏳ جاري استدعاء سجل الأعطال...';
             resultBox.style.display = 'none';
             imgElement.style.display = 'none';
             analyzeBtn.style.display = 'none';
@@ -135,4 +153,23 @@
                         resultBox.innerHTML = "<strong>سجل الأعطال فارغ.</strong>";
                     } else {
                         let htmlContent = "<h3 style='color:#28a745; margin-top:0;'>الأعطال السابقة:</h3>";
-                        data.history
+                        data.history.forEach(item => {
+                            htmlContent += `
+                                <div class="history-item">
+                                    <div class="history-date">📅 أضيف في: ${item.date}</div>
+                                    <div>${item.report}</div>
+                                </div>
+                            `;
+                        });
+                        resultBox.innerHTML = htmlContent;
+                    }
+                    resultBox.style.display = 'block';
+                }
+            } catch (error) {
+                loading.style.display = 'none';
+                alert("فشل في تحميل السجل.");
+            }
+        }
+    </script>
+</body>
+</html>
