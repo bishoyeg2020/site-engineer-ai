@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -8,7 +9,9 @@ import sqlite3
 from datetime import datetime
 
 # 1. إعداد Gemini
-genai.configure(api_key="AIzaSyB_oZnduew-P-jd7xtfTQb5aVtwCV0vZ94".strip())
+# استدعاء المفتاح بشكل آمن من إعدادات السيرفر
+api_key = os.environ.get("GEMINI_API_KEY")
+genai.configure(api_key=api_key)
 model = genai.GenerativeModel('gemini-2.5-flash')
 
 app = FastAPI(title="مساعد المهندس الموقع API")
